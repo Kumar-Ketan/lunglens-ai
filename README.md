@@ -1,14 +1,16 @@
-# Welcome to your Lovable project
+# LungLens AI
+
+yash-rao/Tuberculosis-detection-using-Chest-X-Ray: A deep learning project for detecting Tuberculosis and Pneumonia from chest X-rays using transfer learning, Grad-CAM explainability, and a Streamlit web app. Supports DICOM/JPEG formats, real-time prediction, and model benchmarking based on accuracy and AUC.recently build this check all the details and also build the backend need this for final year project also can take reference frm github repo
 
 This project was built with [Lovable](https://lovable.dev).
 
 ## Build with Lovable
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/0e404752-a590-4749-bf3c-1bf652f81930).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 
@@ -20,10 +22,3 @@ cd <repository-name>
 npm i
 npm run dev
 ```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
