@@ -2,7 +2,8 @@
 const UNCOMPRESSED = new Set(["1.2.840.10008.1.2", "1.2.840.10008.1.2.1", "1.2.840.10008.1.2.2"]);
 
 export async function dicomToCanvas(file: File): Promise<HTMLCanvasElement> {
-  const dicomParser = (await import("dicom-parser")).default;
+  const mod = await import("dicom-parser");
+  const dicomParser = ((mod as unknown as { default?: typeof mod }).default ?? mod) as typeof mod;
   const bytes = new Uint8Array(await file.arrayBuffer());
   let dataSet;
   try {
