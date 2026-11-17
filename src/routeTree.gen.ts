@@ -18,6 +18,8 @@ import { Route as MetricsRouteImport } from './routes/metrics'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedDetectRouteImport } from './routes/_authenticated/detect'
 import { Route as AuthenticatedConsultScanIdRouteImport } from './routes/_authenticated/consult.$scanId'
+import { Route as AuthenticatedConsultationsIndexRouteImport } from './routes/_authenticated/consultations.index'
+import { Route as AuthenticatedConsultationsConsultationIdRouteImport } from './routes/_authenticated/consultations.$consultationId'
 import { Route as AuthenticatedHistoryIndexRouteImport } from './routes/_authenticated/history.index'
 import { Route as AuthenticatedHistoryScanIdRouteImport } from './routes/_authenticated/history.$scanId'
 
@@ -66,6 +68,18 @@ const AuthenticatedConsultScanIdRoute =
     path: '/consult/$scanId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedConsultationsIndexRoute =
+  AuthenticatedConsultationsIndexRouteImport.update({
+    id: '/consultations/',
+    path: '/consultations/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedConsultationsConsultationIdRoute =
+  AuthenticatedConsultationsConsultationIdRouteImport.update({
+    id: '/consultations/$consultationId',
+    path: '/consultations/$consultationId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedHistoryIndexRoute =
   AuthenticatedHistoryIndexRouteImport.update({
     id: '/history/',
@@ -88,7 +102,9 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/detect': typeof AuthenticatedDetectRoute
   '/consult/$scanId': typeof AuthenticatedConsultScanIdRoute
+  '/consultations/$consultationId': typeof AuthenticatedConsultationsConsultationIdRoute
   '/history/$scanId': typeof AuthenticatedHistoryScanIdRoute
+  '/consultations/': typeof AuthenticatedConsultationsIndexRoute
   '/history/': typeof AuthenticatedHistoryIndexRoute
 }
 export interface FileRoutesByTo {
@@ -100,7 +116,9 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/detect': typeof AuthenticatedDetectRoute
   '/consult/$scanId': typeof AuthenticatedConsultScanIdRoute
+  '/consultations/$consultationId': typeof AuthenticatedConsultationsConsultationIdRoute
   '/history/$scanId': typeof AuthenticatedHistoryScanIdRoute
+  '/consultations': typeof AuthenticatedConsultationsIndexRoute
   '/history': typeof AuthenticatedHistoryIndexRoute
 }
 export interface FileRoutesById {
@@ -114,7 +132,9 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/detect': typeof AuthenticatedDetectRoute
   '/_authenticated/consult/$scanId': typeof AuthenticatedConsultScanIdRoute
+  '/_authenticated/consultations/$consultationId': typeof AuthenticatedConsultationsConsultationIdRoute
   '/_authenticated/history/$scanId': typeof AuthenticatedHistoryScanIdRoute
+  '/_authenticated/consultations/': typeof AuthenticatedConsultationsIndexRoute
   '/_authenticated/history/': typeof AuthenticatedHistoryIndexRoute
 }
 export interface FileRouteTypes {
@@ -128,7 +148,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/detect'
     | '/consult/$scanId'
+    | '/consultations/$consultationId'
     | '/history/$scanId'
+    | '/consultations/'
     | '/history/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -140,7 +162,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/detect'
     | '/consult/$scanId'
+    | '/consultations/$consultationId'
     | '/history/$scanId'
+    | '/consultations'
     | '/history'
   id:
     | '__root__'
@@ -153,7 +177,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/detect'
     | '/_authenticated/consult/$scanId'
+    | '/_authenticated/consultations/$consultationId'
     | '/_authenticated/history/$scanId'
+    | '/_authenticated/consultations/'
     | '/_authenticated/history/'
   fileRoutesById: FileRoutesById
 }
@@ -232,6 +258,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConsultScanIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/consultations/': {
+      id: '/_authenticated/consultations/'
+      path: '/consultations'
+      fullPath: '/consultations/'
+      preLoaderRoute: typeof AuthenticatedConsultationsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/consultations/$consultationId': {
+      id: '/_authenticated/consultations/$consultationId'
+      path: '/consultations/$consultationId'
+      fullPath: '/consultations/$consultationId'
+      preLoaderRoute: typeof AuthenticatedConsultationsConsultationIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/history/': {
       id: '/_authenticated/history/'
       path: '/history'
@@ -252,14 +292,19 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDetectRoute: typeof AuthenticatedDetectRoute
   AuthenticatedConsultScanIdRoute: typeof AuthenticatedConsultScanIdRoute
+  AuthenticatedConsultationsConsultationIdRoute: typeof AuthenticatedConsultationsConsultationIdRoute
   AuthenticatedHistoryScanIdRoute: typeof AuthenticatedHistoryScanIdRoute
+  AuthenticatedConsultationsIndexRoute: typeof AuthenticatedConsultationsIndexRoute
   AuthenticatedHistoryIndexRoute: typeof AuthenticatedHistoryIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDetectRoute: AuthenticatedDetectRoute,
   AuthenticatedConsultScanIdRoute: AuthenticatedConsultScanIdRoute,
+  AuthenticatedConsultationsConsultationIdRoute:
+    AuthenticatedConsultationsConsultationIdRoute,
   AuthenticatedHistoryScanIdRoute: AuthenticatedHistoryScanIdRoute,
+  AuthenticatedConsultationsIndexRoute: AuthenticatedConsultationsIndexRoute,
   AuthenticatedHistoryIndexRoute: AuthenticatedHistoryIndexRoute,
 }
 
