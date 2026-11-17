@@ -89,9 +89,9 @@ function toTensorData(source: CanvasImageSource) {
   const plane = 224 * 224;
   const out = new Float32Array(3 * plane);
   for (let i = 0; i < plane; i++) {
-    out[i] = normalizePixel(data[i * 4]);
-    out[plane + i] = normalizePixel(data[i * 4 + 1]);
-    out[2 * plane + i] = normalizePixel(data[i * 4 + 2]);
+    out[i] = normalizePixel(data[i * 4] ?? 0);
+    out[plane + i] = normalizePixel(data[i * 4 + 1] ?? 0);
+    out[2 * plane + i] = normalizePixel(data[i * 4 + 2] ?? 0);
   }
   return out;
 }
@@ -102,12 +102,15 @@ export async function predictTb(source: CanvasImageSource): Promise<TbPrediction
   const started = performance.now();
   const outputs = await session.run({ input });
   const inferenceMs = performance.now() - started;
-  const probability = (outputs.prob.data as Float32Array)[0];
-  const raw = outputs.cam.data as Float32Array;
+  const probOut = outputs["prob"];
+  const camOut = outputs["cam"];
+  if (!probOut || !camOut) throw new Error("The model returned an unexpected output.");
+  const probability = (probOut.data as Float32Array)[0] ?? 0;
+  const raw = camOut.data as Float32Array;
   let camMax = 0;
   for (const v of raw) camMax = Math.max(camMax, v);
   const cam = new Float32Array(49);
-  for (let i = 0; i < 49; i++) cam[i] = camMax > 0 ? raw[i] / camMax : 0;
+  for (let i = 0; i < 49; i++) cam[i] = camMax > 0 ? (raw[i] ?? 0) / camMax : 0;
   return { probability, label: tbLabelFor(probability), cam, camMax, inferenceMs };
 }
 
@@ -145,10 +148,10 @@ export function renderHeatmapOverlay(source: HTMLCanvasElement, cam: Float32Arra
       const x1 = Math.min(6, x0 + 1);
       const fx = gx - x0;
       const v =
-        cam[y0 * 7 + x0] * (1 - fx) * (1 - fy) +
-        cam[y0 * 7 + x1] * fx * (1 - fy) +
-        cam[y1 * 7 + x0] * (1 - fx) * fy +
-        cam[y1 * 7 + x1] * fx * fy;
+        (cam[y0 * 7 + x0] ?? 0) * (1 - fx) * (1 - fy) +
+        (cam[y0 * 7 + x1] ?? 0) * fx * (1 - fy) +
+        (cam[y1 * 7 + x0] ?? 0) * (1 - fx) * fy +
+        (cam[y1 * 7 + x1] ?? 0) * fx * fy;
       const [r, g, b] = jet(v);
       const j = (y * size + x) * 4;
       img.data[j] = r;
