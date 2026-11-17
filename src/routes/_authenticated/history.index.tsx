@@ -140,7 +140,7 @@ function Stat({ label, value, tone = "text-foreground" }: { label: string; value
   );
 }
 
-function ScanCard({ scan, thumb }: { scan: Scan; thumb?: string }) {
+function ScanCard({ scan, thumb }: { scan: Scan; thumb: string | undefined }) {
   const positive = scan.tb_probability >= TB_THRESHOLD;
   return (
     <Link
