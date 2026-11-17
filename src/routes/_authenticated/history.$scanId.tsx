@@ -258,9 +258,16 @@ function ScanResult() {
                 </Button>
               </div>
             ) : aiRunning ? (
+              <div>
               <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" /> Reviewing the X-ray… this can take up to a minute.
               </p>
+              {!aiBusy && (
+                <Button variant="glass" size="sm" className="mt-3" onClick={requestAi}>
+                  <RefreshCw aria-hidden="true" /> Restart review
+                </Button>
+              )}
+              </div>
             ) : null}
           </div>
         </div>
