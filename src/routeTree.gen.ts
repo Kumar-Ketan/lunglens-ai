@@ -17,6 +17,7 @@ import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as MetricsRouteImport } from './routes/metrics'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedDetectRouteImport } from './routes/_authenticated/detect'
+import { Route as AuthenticatedConsultScanIdRouteImport } from './routes/_authenticated/consult.$scanId'
 import { Route as AuthenticatedHistoryIndexRouteImport } from './routes/_authenticated/history.index'
 import { Route as AuthenticatedHistoryScanIdRouteImport } from './routes/_authenticated/history.$scanId'
 
@@ -59,6 +60,12 @@ const AuthenticatedDetectRoute = AuthenticatedDetectRouteImport.update({
   path: '/detect',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedConsultScanIdRoute =
+  AuthenticatedConsultScanIdRouteImport.update({
+    id: '/consult/$scanId',
+    path: '/consult/$scanId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedHistoryIndexRoute =
   AuthenticatedHistoryIndexRouteImport.update({
     id: '/history/',
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/metrics': typeof MetricsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/detect': typeof AuthenticatedDetectRoute
+  '/consult/$scanId': typeof AuthenticatedConsultScanIdRoute
   '/history/$scanId': typeof AuthenticatedHistoryScanIdRoute
   '/history/': typeof AuthenticatedHistoryIndexRoute
 }
@@ -91,6 +99,7 @@ export interface FileRoutesByTo {
   '/metrics': typeof MetricsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/detect': typeof AuthenticatedDetectRoute
+  '/consult/$scanId': typeof AuthenticatedConsultScanIdRoute
   '/history/$scanId': typeof AuthenticatedHistoryScanIdRoute
   '/history': typeof AuthenticatedHistoryIndexRoute
 }
@@ -104,6 +113,7 @@ export interface FileRoutesById {
   '/metrics': typeof MetricsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/detect': typeof AuthenticatedDetectRoute
+  '/_authenticated/consult/$scanId': typeof AuthenticatedConsultScanIdRoute
   '/_authenticated/history/$scanId': typeof AuthenticatedHistoryScanIdRoute
   '/_authenticated/history/': typeof AuthenticatedHistoryIndexRoute
 }
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/metrics'
     | '/reset-password'
     | '/detect'
+    | '/consult/$scanId'
     | '/history/$scanId'
     | '/history/'
   fileRoutesByTo: FileRoutesByTo
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/metrics'
     | '/reset-password'
     | '/detect'
+    | '/consult/$scanId'
     | '/history/$scanId'
     | '/history'
   id:
@@ -140,6 +152,7 @@ export interface FileRouteTypes {
     | '/metrics'
     | '/reset-password'
     | '/_authenticated/detect'
+    | '/_authenticated/consult/$scanId'
     | '/_authenticated/history/$scanId'
     | '/_authenticated/history/'
   fileRoutesById: FileRoutesById
@@ -212,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDetectRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/consult/$scanId': {
+      id: '/_authenticated/consult/$scanId'
+      path: '/consult/$scanId'
+      fullPath: '/consult/$scanId'
+      preLoaderRoute: typeof AuthenticatedConsultScanIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/history/': {
       id: '/_authenticated/history/'
       path: '/history'
@@ -231,12 +251,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDetectRoute: typeof AuthenticatedDetectRoute
+  AuthenticatedConsultScanIdRoute: typeof AuthenticatedConsultScanIdRoute
   AuthenticatedHistoryScanIdRoute: typeof AuthenticatedHistoryScanIdRoute
   AuthenticatedHistoryIndexRoute: typeof AuthenticatedHistoryIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDetectRoute: AuthenticatedDetectRoute,
+  AuthenticatedConsultScanIdRoute: AuthenticatedConsultScanIdRoute,
   AuthenticatedHistoryScanIdRoute: AuthenticatedHistoryScanIdRoute,
   AuthenticatedHistoryIndexRoute: AuthenticatedHistoryIndexRoute,
 }
