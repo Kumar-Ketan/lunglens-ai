@@ -40,7 +40,7 @@ export async function dicomToCanvas(file: File): Promise<HTMLCanvasElement> {
   let min = Infinity;
   let max = -Infinity;
   for (let i = 0; i < count; i++) {
-    const v = pixels[i];
+    const v = pixels[i] ?? 0;
     if (v < min) min = v;
     if (v > max) max = v;
   }
@@ -52,7 +52,7 @@ export async function dicomToCanvas(file: File): Promise<HTMLCanvasElement> {
   const image = ctx.createImageData(cols, rows);
   const invert = photometric === "MONOCHROME1";
   for (let i = 0; i < count; i++) {
-    let g = Math.round(((pixels[i] - min) / range) * 255);
+    let g = Math.round((((pixels[i] ?? 0) - min) / range) * 255);
     if (invert) g = 255 - g;
     const j = i * 4;
     image.data[j] = g;

@@ -42,7 +42,7 @@ function RocChart({ points, auc }: { points: number[][]; auc: number }) {
   const size = 260;
   const pad = 32;
   const inner = size - pad * 1.5;
-  const path = points.map(([x, y], i) => `${i ? "L" : "M"}${pad + x * inner},${pad / 2 + (1 - y) * inner}`).join(" ");
+  const path = points.map(([x = 0, y = 0], i) => `${i ? "L" : "M"}${pad + x * inner},${pad / 2 + (1 - y) * inner}`).join(" ");
   const area = `${path} L${pad + inner},${pad / 2 + inner} L${pad},${pad / 2 + inner} Z`;
   return (
     <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-sm" role="img" aria-label={`ROC curve, AUC ${auc.toFixed(3)}`}>

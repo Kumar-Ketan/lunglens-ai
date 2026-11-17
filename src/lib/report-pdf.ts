@@ -51,7 +51,7 @@ export async function downloadScanReport(scan: Scan, imageUrl?: string, heatmapU
   ];
   meta.forEach(([k, v], i) => {
     doc.setFont("helvetica", "bold");
-    doc.text(k, M, y + i * 5);
+    doc.text(String(k), M, y + i * 5);
     doc.setFont("helvetica", "normal");
     doc.text(String(v), M + 38, y + i * 5);
   });

@@ -17,6 +17,8 @@ import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as MetricsRouteImport } from './routes/metrics'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedDetectRouteImport } from './routes/_authenticated/detect'
+import { Route as AuthenticatedHistoryIndexRouteImport } from './routes/_authenticated/history.index'
+import { Route as AuthenticatedHistoryScanIdRouteImport } from './routes/_authenticated/history.$scanId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -57,6 +59,18 @@ const AuthenticatedDetectRoute = AuthenticatedDetectRouteImport.update({
   path: '/detect',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedHistoryIndexRoute =
+  AuthenticatedHistoryIndexRouteImport.update({
+    id: '/history/',
+    path: '/history/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHistoryScanIdRoute =
+  AuthenticatedHistoryScanIdRouteImport.update({
+    id: '/history/$scanId',
+    path: '/history/$scanId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -66,6 +80,8 @@ export interface FileRoutesByFullPath {
   '/metrics': typeof MetricsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/detect': typeof AuthenticatedDetectRoute
+  '/history/$scanId': typeof AuthenticatedHistoryScanIdRoute
+  '/history/': typeof AuthenticatedHistoryIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,6 +91,8 @@ export interface FileRoutesByTo {
   '/metrics': typeof MetricsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/detect': typeof AuthenticatedDetectRoute
+  '/history/$scanId': typeof AuthenticatedHistoryScanIdRoute
+  '/history': typeof AuthenticatedHistoryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,6 +104,8 @@ export interface FileRoutesById {
   '/metrics': typeof MetricsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/detect': typeof AuthenticatedDetectRoute
+  '/_authenticated/history/$scanId': typeof AuthenticatedHistoryScanIdRoute
+  '/_authenticated/history/': typeof AuthenticatedHistoryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +117,8 @@ export interface FileRouteTypes {
     | '/metrics'
     | '/reset-password'
     | '/detect'
+    | '/history/$scanId'
+    | '/history/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -106,6 +128,8 @@ export interface FileRouteTypes {
     | '/metrics'
     | '/reset-password'
     | '/detect'
+    | '/history/$scanId'
+    | '/history'
   id:
     | '__root__'
     | '/'
@@ -116,6 +140,8 @@ export interface FileRouteTypes {
     | '/metrics'
     | '/reset-password'
     | '/_authenticated/detect'
+    | '/_authenticated/history/$scanId'
+    | '/_authenticated/history/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -186,15 +212,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDetectRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/history/': {
+      id: '/_authenticated/history/'
+      path: '/history'
+      fullPath: '/history/'
+      preLoaderRoute: typeof AuthenticatedHistoryIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/history/$scanId': {
+      id: '/_authenticated/history/$scanId'
+      path: '/history/$scanId'
+      fullPath: '/history/$scanId'
+      preLoaderRoute: typeof AuthenticatedHistoryScanIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDetectRoute: typeof AuthenticatedDetectRoute
+  AuthenticatedHistoryScanIdRoute: typeof AuthenticatedHistoryScanIdRoute
+  AuthenticatedHistoryIndexRoute: typeof AuthenticatedHistoryIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDetectRoute: AuthenticatedDetectRoute,
+  AuthenticatedHistoryScanIdRoute: AuthenticatedHistoryScanIdRoute,
+  AuthenticatedHistoryIndexRoute: AuthenticatedHistoryIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
