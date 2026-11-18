@@ -34,3 +34,4 @@ use the editor.
 - The ResNet18 TB model runs in the browser (ONNX); the server never runs it. Why: keeps the model free to host and works on edge workers.
 - The AI second opinion runs only in an authenticated server function that reads the user's own X-ray and writes results onto that scan row. Why: keeps the AI key server-side and RLS scoped to the owner.
 - Scan pages live under `_authenticated/history.*` as flat routes (no `history.tsx` layout). Why: avoids a layout that must render an Outlet.
+- Consultation bookings are created, paid and cancelled only through authenticated server functions; users have read-only access to their own rows. Why: nobody can mark a booking paid from the browser, and the demo payment step can later be swapped for a real gateway check.

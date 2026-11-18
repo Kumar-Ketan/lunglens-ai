@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Brain, CircleAlert, Download, Loader2, RefreshCw, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Brain, CalendarCheck, CircleAlert, Download, Loader2, RefreshCw, Save, Stethoscope, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ProbabilityBar } from "@/components/scan/ProbabilityBar";
@@ -23,6 +23,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { CONSULT_FEE_PAISE, detectedConditions, formatInr, formatSlot } from "@/lib/consult";
+import { scanConsultationsQueryOptions } from "@/lib/consultations";
 import { confidenceBand, TB_THRESHOLD } from "@/lib/model/tb-label";
 import { downloadScanReport } from "@/lib/report-pdf";
 import { runAiSecondOpinion } from "@/lib/scans.functions";
@@ -273,6 +275,8 @@ function ScanResult() {
         </div>
       </div>
 
+      <ConsultCard scan={scan} />
+
       {scan.ai_status === "done" && !aiBusy && (findings.length > 0 || scan.ai_impression) && (
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           {findings.length > 0 && (
@@ -352,6 +356,52 @@ function DetailsEditor({ scan }: { scan: Scan }) {
       <Button className="mt-4" variant="glass" disabled={!dirty || saving} onClick={save}>
         {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />} Save details
       </Button>
+    </div>
+  );
+}
+
+function ConsultCard({ scan }: { scan: Scan }) {
+  const conditions = detectedConditions(scan, TB_THRESHOLD);
+  const bookings = useQuery({ ...scanConsultationsQueryOptions(scan.id), enabled: conditions.length > 0 });
+  if (conditions.length === 0) return null;
+  const confirmed = bookings.data?.find((b) => b.status === "confirmed");
+  const pending = bookings.data?.find((b) => b.status === "pending_payment");
+
+  return (
+    <div className="panel mt-6 flex flex-col gap-5 border-tb/40 p-6 md:flex-row md:items-center">
+      <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-tb/15 text-tb">
+        {confirmed ? <CalendarCheck className="size-6" aria-hidden="true" /> : <Stethoscope className="size-6" aria-hidden="true" />}
+      </span>
+      <div className="flex-1">
+        {confirmed ? (
+          <>
+            <h2 className="text-lg font-semibold">Appointment booked with {confirmed.doctor_name}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{formatSlot(confirmed.slot_at)} (India time) · paid {formatInr(confirmed.amount_paise)} (test)</p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-lg font-semibold">{conditions.join(" and ")} detected: consult a doctor</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Book an appointment with a chest specialist who will review this X-ray with you. Fee {formatInr(CONSULT_FEE_PAISE)}, paid by QR (test payment, no money is debited).
+            </p>
+          </>
+        )}
+      </div>
+      {confirmed ? (
+        <Button asChild variant="glass">
+          <Link to="/consultations/$consultationId" params={{ consultationId: confirmed.id }}>View appointment</Link>
+        </Button>
+      ) : pending ? (
+        <Button asChild variant="hero">
+          <Link to="/consultations/$consultationId" params={{ consultationId: pending.id }}>Complete payment</Link>
+        </Button>
+      ) : (
+        <Button asChild variant="hero">
+          <Link to="/consult/$scanId" params={{ scanId: scan.id }}>
+            <Stethoscope aria-hidden="true" /> Book appointment
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }
