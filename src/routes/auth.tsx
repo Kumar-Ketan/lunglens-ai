@@ -94,6 +94,18 @@ function AuthPage() {
   }
 
   async function oauth(provider: "google") {
+    // Lovable's sign-in helper relies on the /~oauth path that only Lovable hosting serves.
+    // On other hosts (e.g. Vercel) that path 404s, so go straight to the auth server instead.
+    const host = window.location.hostname;
+    const onLovable = host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com") || host.endsWith(".lovable.dev");
+    if (!onLovable) {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${window.location.origin}/auth` },
+      });
+      if (error) toast.error(error.message);
+      return;
+    }
     const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: `${window.location.origin}/auth` });
     if (result.error) toast.error(result.error.message ?? "Sign-in failed");
   }
