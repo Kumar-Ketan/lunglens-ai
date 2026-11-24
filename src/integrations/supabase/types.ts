@@ -30,6 +30,7 @@ export type Database = {
           patient_phone: string
           payment_method: string | null
           payment_ref: string | null
+          razorpay_order_id: string | null
           scan_id: string
           slot_at: string
           specialty: string
@@ -51,6 +52,7 @@ export type Database = {
           patient_phone: string
           payment_method?: string | null
           payment_ref?: string | null
+          razorpay_order_id?: string | null
           scan_id: string
           slot_at: string
           specialty: string
@@ -72,6 +74,7 @@ export type Database = {
           patient_phone?: string
           payment_method?: string | null
           payment_ref?: string | null
+          razorpay_order_id?: string | null
           scan_id?: string
           slot_at?: string
           specialty?: string

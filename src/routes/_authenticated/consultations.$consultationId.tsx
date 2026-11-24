@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CircleAlert, CircleCheck, CircleX, FileText, Loader2, QrCode, ShieldCheck, Smartphone } from "lucide-react";
-import QRCode from "qrcode";
+import { ArrowLeft, CircleAlert, CircleCheck, CircleX, CreditCard, FileText, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -18,9 +17,50 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { demoQrPayload, formatInr, formatSlot } from "@/lib/consult";
-import { cancelConsultation, confirmTestPayment } from "@/lib/consult.functions";
+import { formatInr, formatSlot } from "@/lib/consult";
+import { cancelConsultation, confirmConsultationPayment, createRazorpayOrder } from "@/lib/consult.functions";
 import { consultationQueryOptions, statusLabel, statusTone, type Consultation } from "@/lib/consultations";
+
+type RazorpayInstance = {
+  open: () => void;
+  on: (event: string, cb: (res: { error?: { description?: string } }) => void) => void;
+};
+
+type RazorpayOptions = {
+  key: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  prefill?: { name?: string; contact?: string };
+  handler: () => void;
+  modal?: { ondismiss?: () => void };
+};
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
+function loadRazorpayCheckout(): Promise<void> {
+  if (typeof window !== "undefined" && window.Razorpay) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Could not load Razorpay Checkout.")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Could not load Razorpay Checkout."));
+    document.body.appendChild(script);
+  });
+}
 
 export const Route = createFileRoute("/_authenticated/consultations/$consultationId")({
   head: () => ({
@@ -84,101 +124,116 @@ function useUpdateBooking() {
 }
 
 function PaymentPanel({ booking }: { booking: Consultation }) {
-  const confirm = useServerFn(confirmTestPayment);
+  const createOrder = useServerFn(createRazorpayOrder);
+  const confirm = useServerFn(confirmConsultationPayment);
   const update = useUpdateBooking();
-  const [qr, setQr] = useState<string | null>(null);
-  const [state, setState] = useState<"idle" | "verifying" | "failed">("idle");
+  const [busy, setBusy] = useState<null | "opening" | "verifying">(null);
+  const [failure, setFailure] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    QRCode.toDataURL(demoQrPayload(booking.id, booking.amount_paise), {
-      width: 480,
-      margin: 1,
-      errorCorrectionLevel: "M",
-    }).then((url) => alive && setQr(url));
-    return () => {
-      alive = false;
-    };
-  }, [booking.id, booking.amount_paise]);
-
-  async function pay() {
-    setState("verifying");
-    // Short pause so the demo feels like a gateway checking the payment.
-    await new Promise((r) => setTimeout(r, 1500));
+  const checkPayment = useCallback(async () => {
+    setBusy("verifying");
     try {
       const updated = await confirm({ data: { consultationId: booking.id } });
       update(updated);
-      toast.success("Payment received (test). Your consultation is confirmed.");
+      if (updated.status === "confirmed") {
+        toast.success("Payment received. Your consultation is confirmed.");
+      }
     } catch (e) {
-      setState("idle");
-      toast.error(e instanceof Error ? e.message : "Could not confirm the payment.");
+      toast.error(e instanceof Error ? e.message : "Could not check payment status.");
+    } finally {
+      setBusy(null);
     }
-  }
+  }, [booking.id, confirm, update]);
 
-  async function fail() {
-    setState("verifying");
-    await new Promise((r) => setTimeout(r, 1200));
-    setState("failed");
+  // Reconcile if the user already paid via UPI/redirect and returned to this page.
+  useEffect(() => {
+    if (booking.razorpay_order_id) void checkPayment();
+  }, [booking.razorpay_order_id, checkPayment]);
+
+  async function pay() {
+    setFailure(null);
+    setBusy("opening");
+    try {
+      const [order] = await Promise.all([
+        createOrder({ data: { consultationId: booking.id } }),
+        loadRazorpayCheckout(),
+      ]);
+      if (!window.Razorpay) throw new Error("Razorpay Checkout failed to load.");
+      setBusy(null);
+
+      const rzp = new window.Razorpay({
+        key: order.keyId,
+        order_id: order.orderId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "LungScan AI",
+        description: `Consultation with ${booking.doctor_name}`,
+        prefill: { name: booking.patient_name, contact: booking.patient_phone },
+        handler: () => {
+          void checkPayment();
+        },
+        modal: {
+          ondismiss: () => {
+            void checkPayment();
+          },
+        },
+      });
+      rzp.on("payment.failed", (res) => {
+        setFailure(res.error?.description ?? "Payment did not go through. You can try again.");
+      });
+      rzp.open();
+    } catch (e) {
+      setBusy(null);
+      toast.error(e instanceof Error ? e.message : "Could not start payment.");
+    }
   }
 
   return (
     <div className="panel overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-4">
         <div className="flex items-center gap-2">
-          <QrCode className="size-4 text-primary" aria-hidden="true" />
-          <span className="font-semibold">LungScan Pay</span>
+          <CreditCard className="size-4 text-primary" aria-hidden="true" />
+          <span className="font-semibold">Pay with Razorpay</span>
         </div>
-        <span className="data rounded-full border border-pneumonia/40 bg-pneumonia/10 px-2.5 py-0.5 text-xs uppercase text-pneumonia">
-          Test mode
-        </span>
+        {booking.is_test_payment && (
+          <span className="data rounded-full border border-pneumonia/40 bg-pneumonia/10 px-2.5 py-0.5 text-xs uppercase text-pneumonia">
+            Test mode
+          </span>
+        )}
       </div>
       <div className="p-6 text-center">
         <p className="text-sm text-muted-foreground">Amount to pay</p>
         <p className="data mt-1 text-4xl font-semibold">{formatInr(booking.amount_paise)}</p>
-
-        <div className="relative mx-auto mt-6 w-full max-w-[260px] rounded-2xl bg-foreground p-3">
-          {qr ? (
-            <img src={qr} alt="Test payment QR code" className="aspect-square w-full" />
-          ) : (
-            <div className="grid aspect-square place-items-center">
-              <Loader2 className="size-6 animate-spin text-background" aria-hidden="true" />
-            </div>
-          )}
-          {state === "verifying" && (
-            <div className="absolute inset-0 grid place-items-center rounded-2xl bg-background/85">
-              <p className="flex items-center gap-2 text-sm font-medium">
-                <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" /> Verifying payment…
-              </p>
-            </div>
-          )}
-        </div>
-
-        <p className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Smartphone className="size-4" aria-hidden="true" /> Scan with any UPI app, then tap "I have paid"
+        <p className="mt-2 text-sm text-muted-foreground">
+          Pay by UPI, card, or netbanking via Razorpay Checkout.
         </p>
 
-        {state === "failed" && (
+        {failure && (
           <p
             className="mx-auto mt-4 flex max-w-sm items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-left text-sm"
             role="alert"
           >
             <CircleAlert className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
-            Payment failed (test). No money was taken. You can try again.
+            {failure}
           </p>
         )}
 
         <div className="mx-auto mt-6 flex max-w-sm flex-col gap-2">
-          <Button variant="hero" onClick={pay} disabled={state === "verifying"}>
-            <CircleCheck aria-hidden="true" /> I have paid {formatInr(booking.amount_paise)}
-          </Button>
-          <Button variant="glass" onClick={fail} disabled={state === "verifying"}>
-            <CircleX aria-hidden="true" /> Simulate a failed payment
+          <Button variant="hero" onClick={pay} disabled={busy !== null}>
+            {busy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <CreditCard aria-hidden="true" />}
+            {busy === "opening"
+              ? "Opening Razorpay…"
+              : busy === "verifying"
+                ? "Checking payment…"
+                : `Pay ${formatInr(booking.amount_paise)} with Razorpay`}
           </Button>
         </div>
 
         <p className="mx-auto mt-6 flex max-w-sm items-start gap-2 text-left text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
-          This is a demo QR for a student project. It is not linked to any bank account and no money is ever debited.
+          {booking.is_test_payment
+            ? "Razorpay test mode is active. Use Razorpay test UPI, card, or netbanking details — no real money is debited."
+            : "Payments are verified with Razorpay before your consultation is confirmed."}
         </p>
       </div>
     </div>
@@ -300,7 +355,9 @@ function BookingSummary({ booking }: { booking: Consultation }) {
           </div>
         ))}
         <div className="flex items-baseline justify-between gap-4 border-t border-border pt-3">
-          <dt className="font-medium">{booking.status === "confirmed" ? "Paid (test)" : "Fee"}</dt>
+          <dt className="font-medium">
+            {booking.status === "confirmed" ? (booking.is_test_payment ? "Paid (test)" : "Paid") : "Fee"}
+          </dt>
           <dd className="data text-xl font-semibold">{formatInr(booking.amount_paise)}</dd>
         </div>
       </dl>

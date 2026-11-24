@@ -9,6 +9,7 @@ import {
   isBookableSlot,
   normalizeIndianPhone,
 } from "@/lib/consult";
+import { razorpayEnv, razorpayRequest, verifyAndConfirmConsultation, type RazorpayOrder } from "@/lib/razorpay.server";
 
 const isId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
 
@@ -111,16 +112,11 @@ export const createConsultation = createServerFn({ method: "POST" })
     return { id: created.id };
   });
 
-function testPaymentRef() {
-  const bytes = crypto.getRandomValues(new Uint8Array(6));
-  return `TEST-UPI-${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
-}
-
 /**
- * Demo payment confirmation. No money moves: this stands in for the step where a real
- * gateway would verify the payment before the booking is confirmed.
+ * Creates (or reuses) a Razorpay order for a pending consultation and returns
+ * the details needed to open Razorpay Checkout in the browser.
  */
-export const confirmTestPayment = createServerFn({ method: "POST" })
+export const createRazorpayOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { consultationId: string }) => {
     if (!input || !isId(input.consultationId)) throw new Error("Invalid booking");
@@ -133,31 +129,73 @@ export const confirmTestPayment = createServerFn({ method: "POST" })
       .eq("id", data.consultationId)
       .maybeSingle();
     if (error || !booking) throw new Error("Booking not found.");
-    if (booking.status === "confirmed") return booking;
+    if (booking.status === "confirmed") throw new Error("This booking is already paid.");
     if (booking.status !== "pending_payment") throw new Error("This booking was cancelled.");
     if (new Date(booking.slot_at).getTime() <= Date.now()) {
       throw new Error("This time slot has passed. Please book a new time.");
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: updated, error: upError } = await supabaseAdmin
+    const { data: taken } = await supabaseAdmin
       .from("consultations")
-      .update({
-        status: "confirmed",
-        payment_method: "UPI QR (test mode)",
-        payment_ref: testPaymentRef(),
-        paid_at: new Date().toISOString(),
-      })
-      .eq("id", booking.id)
-      .eq("user_id", context.userId)
-      .eq("status", "pending_payment")
-      .select("*")
-      .single();
-    if (upError?.code === "23505") {
-      throw new Error("Someone else just booked this time. No money was taken. Please pick another slot.");
+      .select("id")
+      .eq("doctor_id", booking.doctor_id)
+      .eq("slot_at", booking.slot_at)
+      .eq("status", "confirmed")
+      .limit(1);
+    if (taken && taken.length > 0) {
+      throw new Error("Someone else just booked this time. Please pick another slot.");
     }
-    if (upError || !updated) throw new Error("Could not confirm the payment.");
-    return updated;
+
+    const { keyId, live } = razorpayEnv();
+    let orderId = booking.razorpay_order_id;
+
+    if (!orderId) {
+      const rzpOrder = await razorpayRequest<RazorpayOrder>("orders", {
+        method: "POST",
+        body: {
+          amount: booking.amount_paise,
+          currency: booking.currency,
+          receipt: booking.id,
+          notes: { consultationId: booking.id, doctor: booking.doctor_name },
+        },
+      });
+      orderId = rzpOrder.id;
+      const { error: saveErr } = await supabaseAdmin
+        .from("consultations")
+        .update({ razorpay_order_id: orderId, is_test_payment: !live })
+        .eq("id", booking.id)
+        .eq("user_id", context.userId)
+        .eq("status", "pending_payment");
+      if (saveErr) throw new Error("Could not save the payment order.");
+    }
+
+    return {
+      consultationId: booking.id,
+      orderId,
+      amount: booking.amount_paise,
+      currency: booking.currency,
+      keyId,
+      live,
+    };
+  });
+
+/** Reads the order from Razorpay and confirms the consultation only if Razorpay reports it paid. */
+export const confirmConsultationPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { consultationId: string }) => {
+    if (!input || !isId(input.consultationId)) throw new Error("Invalid booking");
+    return { consultationId: input.consultationId };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: booking, error } = await context.supabase
+      .from("consultations")
+      .select("*")
+      .eq("id", data.consultationId)
+      .maybeSingle();
+    if (error || !booking) throw new Error("Booking not found.");
+    if (booking.status !== "pending_payment" || !booking.razorpay_order_id) return booking;
+    return verifyAndConfirmConsultation(booking);
   });
 
 /** Cancels the caller's booking if the appointment has not started yet. */
