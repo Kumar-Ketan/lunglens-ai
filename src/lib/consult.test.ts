@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { appointmentPdfFilename, formatPdfInr } from "@/lib/appointment-pdf";
 import {
   CONSULT_FEE_PAISE,
   demoQrPayload,
@@ -43,6 +44,12 @@ describe("demo payment never takes real money", () => {
     const payload = demoQrPayload("abc", CONSULT_FEE_PAISE);
     expect(payload.startsWith("upi:")).toBe(false);
     expect(payload).toContain("₹499");
+  });
+
+  it("formats appointment PDF fee in ASCII-safe INR and builds filename", () => {
+    expect(formatPdfInr(CONSULT_FEE_PAISE)).toBe("INR 499");
+    expect(formatPdfInr(49950)).toBe("INR 499.50");
+    expect(appointmentPdfFilename("12345678-aaaa-bbbb-cccc-1234567890ab")).toBe("lungscan-appointment-12345678.pdf");
   });
 });
 

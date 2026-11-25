@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CircleAlert, CircleCheck, CircleX, CreditCard, FileText, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CircleAlert, CircleCheck, CircleX, CreditCard, Download, FileText, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { downloadAppointmentPdf } from "@/lib/appointment-pdf";
 import { formatInr, formatSlot } from "@/lib/consult";
 import { cancelConsultation, confirmConsultationPayment, createRazorpayOrder } from "@/lib/consult.functions";
 import { consultationQueryOptions, statusLabel, statusTone, type Consultation } from "@/lib/consultations";
@@ -129,14 +130,19 @@ function PaymentPanel({ booking }: { booking: Consultation }) {
   const update = useUpdateBooking();
   const [busy, setBusy] = useState<null | "opening" | "verifying">(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const downloadedRef = useRef(false);
 
   const checkPayment = useCallback(async () => {
     setBusy("verifying");
     try {
       const updated = await confirm({ data: { consultationId: booking.id } });
       update(updated);
-      if (updated.status === "confirmed") {
-        toast.success("Payment received. Your consultation is confirmed.");
+      if (updated.status === "confirmed" && !downloadedRef.current) {
+        downloadedRef.current = true;
+        toast.success("Payment received. Downloading your appointment PDF.");
+        void downloadAppointmentPdf(updated).catch(() => {
+          toast.error("Could not auto-download the PDF. Use the Download button below.");
+        });
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not check payment status.");
@@ -241,6 +247,19 @@ function PaymentPanel({ booking }: { booking: Consultation }) {
 }
 
 function ConfirmedPanel({ booking }: { booking: Consultation }) {
+  const [downloading, setDownloading] = useState(false);
+
+  async function onDownloadPdf() {
+    setDownloading(true);
+    try {
+      await downloadAppointmentPdf(booking);
+    } catch {
+      toast.error("Could not generate the appointment PDF.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div className="panel p-6">
       <span className="grid size-12 place-items-center rounded-full bg-normal/15 text-normal">
@@ -255,6 +274,10 @@ function ConfirmedPanel({ booking }: { booking: Consultation }) {
         Your X-ray, Grad-CAM heatmap and AI report have been shared with the doctor.
       </p>
       <div className="mt-6 flex flex-wrap gap-2">
+        <Button variant="hero" onClick={onDownloadPdf} disabled={downloading}>
+          {downloading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}
+          Download appointment PDF
+        </Button>
         <Button asChild variant="glass">
           <Link to="/history/$scanId" params={{ scanId: booking.scan_id }}>
             <FileText aria-hidden="true" /> View the scan

@@ -376,13 +376,16 @@ function ConsultCard({ scan }: { scan: Scan }) {
         {confirmed ? (
           <>
             <h2 className="text-lg font-semibold">Appointment booked with {confirmed.doctor_name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{formatSlot(confirmed.slot_at)} (India time) · paid {formatInr(confirmed.amount_paise)} (test)</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {formatSlot(confirmed.slot_at)} (India time) · paid {formatInr(confirmed.amount_paise)}
+              {confirmed.is_test_payment ? " (test)" : ""}
+            </p>
           </>
         ) : (
           <>
             <h2 className="text-lg font-semibold">{conditions.join(" and ")} detected: consult a doctor</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Book an appointment with a chest specialist who will review this X-ray with you. Fee {formatInr(CONSULT_FEE_PAISE)}, paid by QR (test payment, no money is debited).
+              Book an appointment with a chest specialist who will review this X-ray with you. Fee {formatInr(CONSULT_FEE_PAISE)}, paid via Razorpay.
             </p>
           </>
         )}
