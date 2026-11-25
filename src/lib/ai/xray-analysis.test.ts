@@ -4,13 +4,13 @@ import { describe, expect, it } from "vitest";
 import { mapAiError } from "./xray-analysis.server";
 
 function makeApiError(statusCode: number, body?: unknown) {
-  return new APICallError({
+  const base = {
     message: `HTTP ${statusCode}`,
     url: "https://ai.gateway.lovable.dev/v1/responses",
     requestBodyValues: {},
     statusCode,
-    responseBody: body ? JSON.stringify(body) : undefined,
-  });
+  };
+  return new APICallError(body ? { ...base, responseBody: JSON.stringify(body) } : base);
 }
 
 describe("mapAiError", () => {
