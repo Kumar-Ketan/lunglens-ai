@@ -1,0 +1,41 @@
+import { APICallError } from "ai";
+import { describe, expect, it } from "vitest";
+
+import { mapAiError } from "./xray-analysis.server";
+
+function makeApiError(statusCode: number, body?: unknown) {
+  return new APICallError({
+    message: `HTTP ${statusCode}`,
+    url: "https://ai.gateway.lovable.dev/v1/responses",
+    requestBodyValues: {},
+    statusCode,
+    responseBody: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+describe("mapAiError", () => {
+  it("unwraps a 402 Payment Required stream error instead of returning NoOutputGeneratedError", () => {
+    const streamErr = makeApiError(402, { error: { message: "Not enough credits" } });
+    const mapped = mapAiError(new Error("No output generated. Check the stream for errors."), streamErr);
+    expect(mapped.status).toBe(402);
+    expect(mapped.message).toBe("Not enough credits");
+  });
+
+  it("falls back to a clear credits message on 402 with empty body", () => {
+    const mapped = mapAiError(new Error("No output"), makeApiError(402));
+    expect(mapped.status).toBe(402);
+    expect(mapped.message).toContain("credits");
+  });
+
+  it("preserves 403 gateway denial reason", () => {
+    const mapped = mapAiError(new Error("No output"), makeApiError(403, { message: "Model disabled" }));
+    expect(mapped.status).toBe(403);
+    expect(mapped.message).toBe("Model disabled");
+  });
+
+  it("returns a retry-later message for 429 rate limits", () => {
+    const mapped = mapAiError(new Error("No output"), makeApiError(429));
+    expect(mapped.status).toBe(429);
+    expect(mapped.message).toContain("busy");
+  });
+});

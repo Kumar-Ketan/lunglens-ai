@@ -70,6 +70,45 @@ Review the frontal chest radiograph and give a structured research second opinio
 
 const clamp = (n: number) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0);
 
+export function mapAiError(error: unknown, streamError?: unknown): AiAnalysisError {
+  const cause = streamError ?? error;
+  if (cause instanceof AiAnalysisError) return cause;
+  if (APICallError.isInstance(cause)) {
+    const status = cause.statusCode ?? 500;
+    let gatewayMessage = "";
+    try {
+      const body = JSON.parse(cause.responseBody ?? "{}") as { error?: { message?: string }; message?: string };
+      const raw = body?.error?.message ?? body?.message;
+      if (typeof raw === "string" && raw.trim()) gatewayMessage = raw.trim();
+    } catch {
+      /* keep empty */
+    }
+    if (status === 402) {
+      return new AiAnalysisError(
+        gatewayMessage || "AI credits are used up for this workspace. Add credits or wait for the daily reset, then try again.",
+        402,
+      );
+    }
+    if (status === 403) {
+      return new AiAnalysisError(gatewayMessage || "AI access is currently blocked for this workspace.", 403);
+    }
+    if (status === 429) {
+      return new AiAnalysisError("The AI service is busy. Please retry in a minute.", 429);
+    }
+    if (status === 401) {
+      return new AiAnalysisError("AI service is not configured.", 401);
+    }
+    return new AiAnalysisError(gatewayMessage || "The AI service failed. Please try again later.", status);
+  }
+  if (NoObjectGeneratedError.isInstance(cause)) {
+    return new AiAnalysisError("The AI could not produce a structured reading for this image.", 422);
+  }
+  if (cause instanceof Error && cause.message) {
+    return new AiAnalysisError(cause.message, 500);
+  }
+  return new AiAnalysisError("The AI service failed. Please try again later.", 500);
+}
+
 export async function analyzeXrayWithAi(imageDataUrl: string, context: { tbModelProbability: number }) {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new AiAnalysisError("AI service is not configured.", 401);
@@ -82,9 +121,14 @@ export async function analyzeXrayWithAi(imageDataUrl: string, context: { tbModel
     fetch: runIdFetch.fetch,
   });
 
+  let streamError: unknown = null;
   const result = streamText({
     model: provider.responses(MODEL),
     instructions: INSTRUCTIONS,
+    maxRetries: 0,
+    onError: ({ error }) => {
+      streamError = error;
+    },
     messages: [
       {
         role: "user",
@@ -119,22 +163,6 @@ export async function analyzeXrayWithAi(imageDataUrl: string, context: { tbModel
       findings: (output.findings ?? []).slice(0, 5),
     } satisfies AiXrayAnalysis;
   } catch (error) {
-    if (NoObjectGeneratedError.isInstance(error)) {
-      throw new AiAnalysisError("The AI could not produce a structured reading for this image.", 422);
-    }
-    if (APICallError.isInstance(error)) {
-      const status = error.statusCode ?? 500;
-      let message = "The AI service failed. Please try again later.";
-      try {
-        const body = JSON.parse(error.responseBody ?? "{}");
-        message = body?.error?.message ?? body?.message ?? message;
-      } catch {
-        /* keep default */
-      }
-      if (status === 402) message = message || "AI credits are used up for this workspace.";
-      if (status === 429) message = "The AI service is busy. Please retry in a minute.";
-      throw new AiAnalysisError(message, status);
-    }
-    throw error;
+    throw mapAiError(error, streamError);
   }
 }
