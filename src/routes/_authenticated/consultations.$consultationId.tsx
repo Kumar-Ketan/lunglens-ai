@@ -117,11 +117,14 @@ function ConsultationPage() {
 
 function useUpdateBooking() {
   const queryClient = useQueryClient();
-  return (updated: Consultation) => {
-    queryClient.setQueryData(consultationQueryOptions(updated.id).queryKey, updated);
-    void queryClient.invalidateQueries({ queryKey: ["consultations"], exact: true });
-    void queryClient.invalidateQueries({ queryKey: ["consultations", "scan", updated.scan_id] });
-  };
+  return useCallback(
+    (updated: Consultation) => {
+      queryClient.setQueryData(consultationQueryOptions(updated.id).queryKey, updated);
+      void queryClient.invalidateQueries({ queryKey: ["consultations"], exact: true });
+      void queryClient.invalidateQueries({ queryKey: ["consultations", "scan", updated.scan_id] });
+    },
+    [queryClient],
+  );
 }
 
 function PaymentPanel({ booking }: { booking: Consultation }) {

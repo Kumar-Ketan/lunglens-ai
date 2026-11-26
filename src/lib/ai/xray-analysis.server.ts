@@ -84,8 +84,9 @@ export function mapAiError(error: unknown, streamError?: unknown): AiAnalysisErr
       /* keep empty */
     }
     if (status === 402) {
+      const reason = gatewayMessage || "Not enough AI credits.";
       return new AiAnalysisError(
-        gatewayMessage || "AI credits are used up for this workspace. Add credits or wait for the daily reset, then try again.",
+        `${reason}${reason.endsWith(".") ? "" : "."} Add AI credits or wait for the workspace allowance to renew, then select Try again.`,
         402,
       );
     }

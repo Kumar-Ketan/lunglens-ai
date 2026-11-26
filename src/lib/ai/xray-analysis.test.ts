@@ -14,11 +14,12 @@ function makeApiError(statusCode: number, body?: unknown) {
 }
 
 describe("mapAiError", () => {
-  it("unwraps a 402 Payment Required stream error instead of returning NoOutputGeneratedError", () => {
+  it("unwraps a 402 Payment Required stream error and explains how to resume", () => {
     const streamErr = makeApiError(402, { error: { message: "Not enough credits" } });
     const mapped = mapAiError(new Error("No output generated. Check the stream for errors."), streamErr);
     expect(mapped.status).toBe(402);
-    expect(mapped.message).toBe("Not enough credits");
+    expect(mapped.message).toContain("Not enough credits");
+    expect(mapped.message).toContain("Try again");
   });
 
   it("falls back to a clear credits message on 402 with empty body", () => {

@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
+import { createLovableAuth } from "@lovable.dev/cloud-auth-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+
+const EXTERNAL_OAUTH_BROKER_URL = "https://lunglens-clarity-compass.lovable.app/~oauth/initiate";
 
 type Search = { redirect?: string };
 const REDIRECT_KEY = "lungscan.redirect";
@@ -94,19 +97,24 @@ function AuthPage() {
   }
 
   async function oauth(provider: "google") {
-    // Lovable's sign-in helper relies on the /~oauth path that only Lovable hosting serves.
-    // On other hosts (e.g. Vercel) that path 404s, so go straight to the auth server instead.
+    const redirectUri = `${window.location.origin}/auth`;
     const host = window.location.hostname;
     const onLovable = host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com") || host.endsWith(".lovable.dev");
+
     if (!onLovable) {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo: `${window.location.origin}/auth` },
-      });
-      if (error) toast.error(error.message);
+      // Vercel does not serve /~oauth. Use the same managed broker through the app's
+      // public Lovable address, then return to this public sign-in page with the session.
+      const externalAuth = createLovableAuth({ oauthBrokerUrl: EXTERNAL_OAUTH_BROKER_URL });
+      const result = await externalAuth.signInWithOAuth(provider, { redirect_uri: redirectUri });
+      if (result.error) toast.error(result.error.message);
+      else if (result.tokens) {
+        const { error } = await supabase.auth.setSession(result.tokens);
+        if (error) toast.error(error.message);
+      }
       return;
     }
-    const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: `${window.location.origin}/auth` });
+
+    const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: redirectUri });
     if (result.error) toast.error(result.error.message ?? "Sign-in failed");
   }
 
